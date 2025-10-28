@@ -1,0 +1,3 @@
+# Gorgias MCP Server
+
+

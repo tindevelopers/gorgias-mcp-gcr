@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "gorgias": {
+      "command": "python",
+      "args": ["-m", "src.server"],
+      "cwd": "/Users/gene/Projects/gorgias-mcp-server",
+      "env": {
+        "GORGIAS_API_KEY": "${GORGIAS_API_KEY}",
+        "GORGIAS_BASE_URL": "${GORGIAS_BASE_URL}"
+      }
+    }
+  }
+}
+
+
