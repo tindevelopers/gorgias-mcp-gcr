@@ -1,7 +1,11 @@
 {
   "python.analysis.indexing": false,
   "python.analysis.typeCheckingMode": "off",
-  "python.analysis.autoImportCompletions": false
+  "python.analysis.autoImportCompletions": false,
+  "python.analysis.diagnosticMode": "openFilesOnly",
+  "cursorpyright.analysis.autoImportCompletions": false,
+  "cursorpyright.analysis.typeCheckingMode": "off",
+  "cursorpyright.analysis.diagnosticMode": "openFilesOnly"
 }
 
 
