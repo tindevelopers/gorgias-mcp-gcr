@@ -2,13 +2,14 @@
 
 import asyncio
 import logging
+import sys
 from typing import Any, Dict, List, Optional
 from mcp.server import Server
+from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 from .utils.auth import GorgiasAuth
 from .utils.api_client import GorgiasAPIClient
 from .tools.customers import CustomerTools
-from .tools.orders import OrderTools
 from .tools.tickets import TicketTools
 
 # Configure logging
@@ -27,7 +28,6 @@ class GorgiasMCPServer:
         self.auth = None
         self.api_client = None
         self.customer_tools = None
-        self.order_tools = None
         self.ticket_tools = None
         self._initialize_tools()
     
@@ -37,7 +37,6 @@ class GorgiasMCPServer:
             self.auth = GorgiasAuth()
             self.api_client = GorgiasAPIClient(self.auth)
             self.customer_tools = CustomerTools(self.api_client)
-            self.order_tools = OrderTools(self.api_client)
             self.ticket_tools = TicketTools(self.api_client)
             logger.info("Successfully initialized Gorgias MCP server")
         except Exception as e:
@@ -53,8 +52,6 @@ class GorgiasMCPServer:
         tools = []
         if self.customer_tools:
             tools.extend(self.customer_tools.get_tools())
-        if self.order_tools:
-            tools.extend(self.order_tools.get_tools())
         if self.ticket_tools:
             tools.extend(self.ticket_tools.get_tools())
         return tools
@@ -77,15 +74,6 @@ class GorgiasMCPServer:
                     return "Customer tools not available"
                 
                 method = getattr(self.customer_tools, name)
-                return await method(**arguments)
-            
-            # Route to order tools
-            elif name.startswith(("list_orders", "get_order", "search_orders", 
-                                "get_customer_orders", "get_order_metrics")):
-                if not self.order_tools:
-                    return "Order tools not available"
-                
-                method = getattr(self.order_tools, name)
                 return await method(**arguments)
             
             # Route to ticket tools
@@ -145,9 +133,13 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
 async def main():
     """Main entry point for the MCP server."""
     try:
-        # Run the server
-        async with server:
-            await server.run()
+        # Run the server with stdio
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                None  # initialization_options
+            )
     except KeyboardInterrupt:
         logger.info("Server stopped by user")
     except Exception as e:

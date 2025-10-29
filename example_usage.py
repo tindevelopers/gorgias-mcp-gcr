@@ -37,15 +37,7 @@ async def main():
     except Exception as e:
         print(f"Error: {e}")
     
-    # Example 3: List orders
-    print("\n📦 Listing orders...")
-    try:
-        result = await server.handle_tool_call("list_orders", {"limit": 5})
-        print(f"Result: {result}")
-    except Exception as e:
-        print(f"Error: {e}")
-    
-    # Example 4: Search customers
+    # Example 3: Search customers
     print("\n🔍 Searching customers...")
     try:
         result = await server.handle_tool_call("search_customers", {"query": "test", "limit": 3})
