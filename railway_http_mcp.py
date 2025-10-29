@@ -256,6 +256,40 @@ async def mcp_prompts_list_handler(request):
     )
 
 
+async def mcp_resources_read_handler(request):
+    """Handle MCP resources/read requests (stub)."""
+    data = await request.json()
+    response = {
+        "jsonrpc": "2.0",
+        "id": data.get("id"),
+        "error": {
+            "code": -32601,
+            "message": "resources/read is not supported"
+        }
+    }
+    return web.Response(
+        text=json.dumps(response),
+        content_type='application/json'
+    )
+
+
+async def mcp_prompts_get_handler(request):
+    """Handle MCP prompts/get requests (stub)."""
+    data = await request.json()
+    response = {
+        "jsonrpc": "2.0",
+        "id": data.get("id"),
+        "error": {
+            "code": -32601,
+            "message": "prompts/get is not supported"
+        }
+    }
+    return web.Response(
+        text=json.dumps(response),
+        content_type='application/json'
+    )
+
+
 async def mcp_handler(request):
     """Handle all MCP requests."""
     try:
@@ -270,16 +304,20 @@ async def mcp_handler(request):
             return await mcp_tools_call_handler(request)
         elif method == "resources/list":
             return await mcp_resources_list_handler(request)
+        elif method == "resources/read":
+            return await mcp_resources_read_handler(request)
         elif method == "prompts/list":
             return await mcp_prompts_list_handler(request)
+        elif method == "prompts/get":
+            return await mcp_prompts_get_handler(request)
         else:
+            logger.warning(f"Unsupported MCP method requested: {method}")
             return web.Response(
                 text=json.dumps({
                     "jsonrpc": "2.0",
                     "id": data.get("id"),
                     "error": {"code": -32601, "message": f"Method not found: {method}"}
                 }),
-                status=404,
                 content_type='application/json'
             )
     except Exception as e:
