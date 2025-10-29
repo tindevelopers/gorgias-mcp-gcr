@@ -1,0 +1,191 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, railway-deploy ]
+  pull_request:
+    branches: [ main, railway-deploy ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12, 3.13]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Test imports
+      run: |
+        python -c "from src.server import GorgiasMCPServer; print('✅ Server import successful')"
+        python -c "from src.utils.auth import GorgiasAuth; print('✅ Auth import successful')"
+        python -c "from src.utils.api_client import GorgiasAPIClient; print('✅ API client import successful')"
+        python -c "from src.tools.customers import CustomerTools; print('✅ Customer tools import successful')"
+        python -c "from src.tools.tickets import TicketTools; print('✅ Ticket tools import successful')"
+    
+    - name: Test server initialization (without API calls)
+      run: |
+        python -c "
+        import os
+        os.environ['GORGIAS_API_KEY'] = 'test_key'
+        os.environ['GORGIAS_USERNAME'] = 'test@example.com'
+        os.environ['GORGIAS_BASE_URL'] = 'https://test.gorgias.com/api/'
+        
+        from src.server import GorgiasMCPServer
+        try:
+            server = GorgiasMCPServer()
+            tools = server.get_all_tools()
+            print(f'✅ Server initialized with {len(tools)} tools')
+            print(f'Tools: {[tool.name for tool in tools]}')
+        except Exception as e:
+            print(f'❌ Server initialization failed: {e}')
+            exit(1)
+        "
+    
+    - name: Test Railway server
+      run: |
+        python -c "
+        import os
+        os.environ['GORGIAS_API_KEY'] = 'test_key'
+        os.environ['GORGIAS_USERNAME'] = 'test@example.com'
+        os.environ['GORGIAS_BASE_URL'] = 'https://test.gorgias.com/api/'
+        os.environ['PORT'] = '3000'
+        
+        # Test import without running the server
+        from railway_server import check_environment, init_mcp_server
+        import asyncio
+        
+        print('✅ Railway server imports successful')
+        
+        # Test environment check
+        if check_environment():
+            print('✅ Environment check passed')
+        else:
+            print('❌ Environment check failed')
+            exit(1)
+        "
+    
+    - name: Test configuration files
+      run: |
+        python -c "
+        import json
+        import yaml
+        
+        # Test railway.json
+        with open('railway.json', 'r') as f:
+            railway_config = json.load(f)
+        assert railway_config['build']['builder'] == 'NIXPACKS'
+        assert railway_config['deploy']['startCommand'] == 'python railway_server.py'
+        print('✅ railway.json is valid')
+        
+        # Test requirements.txt
+        with open('requirements.txt', 'r') as f:
+            requirements = f.read()
+        assert 'mcp>=' in requirements
+        assert 'aiohttp>=' in requirements
+        print('✅ requirements.txt is valid')
+        "
+    
+    - name: Test MCP configuration
+      run: |
+        python -c "
+        import json
+        
+        with open('mcp_config.json', 'r') as f:
+            mcp_config = json.load(f)
+        
+        assert 'mcpServers' in mcp_config
+        assert 'gorgias' in mcp_config['mcpServers']
+        assert mcp_config['mcpServers']['gorgias']['command'] == 'python'
+        print('✅ mcp_config.json is valid')
+        "
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install safety bandit
+    
+    - name: Security scan with safety
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check
+    
+    - name: Security scan with bandit
+      run: |
+        bandit -r src/ -f json -o bandit-report.json || true
+        bandit -r src/
+
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Test build process
+      run: |
+        # Simulate Railway build process
+        echo "Testing build process..."
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        echo "✅ Build process completed successfully"
+    
+    - name: Test server startup (dry run)
+      run: |
+        python -c "
+        import os
+        os.environ['GORGIAS_API_KEY'] = 'test_key'
+        os.environ['GORGIAS_USERNAME'] = 'test@example.com'
+        os.environ['GORGIAS_BASE_URL'] = 'https://test.gorgias.com/api/'
+        os.environ['PORT'] = '3000'
+        
+        # Test that the server can be imported and basic functions work
+        from railway_server import check_environment, init_mcp_server
+        print('✅ Server startup test passed')
+        "
