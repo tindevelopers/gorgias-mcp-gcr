@@ -1,7 +1,8 @@
 """Ticket management tools for Gorgias MCP server."""
 
-from typing import Any, Dict, List, Optional
-from mcp.types import Tool, TextContent
+import json
+from typing import Any, List
+from mcp.types import Tool
 from ..utils.api_client import GorgiasAPIClient
 
 
@@ -154,6 +155,13 @@ class TicketTools:
             )
         ]
     
+    def _format_json(self, data: Any) -> str:
+        """Format data as a pretty-printed JSON string."""
+        try:
+            return json.dumps(data, indent=2, default=str)
+        except (TypeError, ValueError):
+            return str(data)
+
     async def list_tickets(self, **kwargs) -> str:
         """List tickets with optional filtering.
         
@@ -177,8 +185,9 @@ class TicketTools:
             if "customer_id" in kwargs:
                 params["customer_id"] = kwargs["customer_id"]
             
-            response = await self.api_client.get("tickets", params=params)
-            return f"Found {len(response.get('data', []))} tickets:\n{response}"
+            data = await self.api_client.get("tickets", params=params)
+            count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            return f"Found {count} tickets:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error listing tickets: {str(e)}"
@@ -193,8 +202,8 @@ class TicketTools:
             JSON string of ticket data.
         """
         try:
-            response = await self.api_client.get(f"tickets/{ticket_id}")
-            return f"Ticket {ticket_id} details:\n{response}"
+            data = await self.api_client.get(f"tickets/{ticket_id}")
+            return f"Ticket {ticket_id} details:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error getting ticket {ticket_id}: {str(e)}"
@@ -221,8 +230,11 @@ class TicketTools:
             if "assignee_id" in kwargs:
                 ticket_data["assignee_id"] = kwargs["assignee_id"]
             
-            response = await self.api_client.post("tickets", data=ticket_data)
-            return f"Created ticket {response.get('id', 'unknown')}:\n{response}"
+            data = await self.api_client.post("tickets", data=ticket_data)
+            ticket_identifier = (
+                data.get("id", "unknown") if isinstance(data, dict) else "unknown"
+            )
+            return f"Created ticket {ticket_identifier}:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error creating ticket: {str(e)}"
@@ -249,8 +261,8 @@ class TicketTools:
             if "subject" in kwargs:
                 update_data["subject"] = kwargs["subject"]
             
-            response = await self.api_client.put(f"tickets/{ticket_id}", data=update_data)
-            return f"Updated ticket {ticket_id}:\n{response}"
+            data = await self.api_client.put(f"tickets/{ticket_id}", data=update_data)
+            return f"Updated ticket {ticket_id}:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error updating ticket {ticket_id}: {str(e)}"
@@ -271,8 +283,12 @@ class TicketTools:
                 "limit": limit
             }
             
-            response = await self.api_client.get("tickets/search", params=params)
-            return f"Found {len(response.get('data', []))} tickets matching '{query}':\n{response}"
+            data = await self.api_client.get("tickets/search", params=params)
+            count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            return (
+                f"Found {count} tickets matching '{query}':\n"
+                f"{self._format_json(data)}"
+            )
             
         except Exception as e:
             return f"Error searching tickets: {str(e)}"

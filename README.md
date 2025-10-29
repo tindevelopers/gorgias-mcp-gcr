@@ -26,20 +26,62 @@ A Model Context Protocol (MCP) server for integrating with the Gorgias customer 
 - Update existing tickets (status, priority, assignee, subject)
 - Search tickets by content or other criteria
 
-## Installation
+## Quick Start
 
-1. Install the required dependencies:
+### Option 1: Automatic Setup (Recommended)
+
+1. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Set up environment variables:
+2. **Run the setup script:**
+```bash
+python setup.py
+```
+The setup script will:
+- Prompt you for your Gorgias credentials
+- Validate the credentials
+- Test the API connection
+- Create a `.env` file with your configuration
+
+3. **Start the MCP server:**
+```bash
+python -m src.server
+```
+
+### Option 2: Manual Setup
+
+1. **Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+2. **Configure credentials:**
+```bash
+# Copy the example file
+cp env.example .env
+
+# Edit .env with your actual credentials
+nano .env  # or use your preferred editor
+```
+
+3. **Set environment variables:**
 ```bash
 export GORGIAS_API_KEY="your_api_key_here"
+export GORGIAS_USERNAME="your_email@example.com"
 export GORGIAS_BASE_URL="https://your-store.gorgias.com/api/"
 ```
 
-3. Add the server to your MCP configuration file:
+4. **Start the MCP server:**
+```bash
+python -m src.server
+```
+
+## MCP Inspector Setup
+
+Add the server to your MCP configuration file:
+
 ```json
 {
   "mcpServers": {
@@ -49,11 +91,17 @@ export GORGIAS_BASE_URL="https://your-store.gorgias.com/api/"
       "cwd": "/path/to/gorgias-mcp-server",
       "env": {
         "GORGIAS_API_KEY": "${GORGIAS_API_KEY}",
+        "GORGIAS_USERNAME": "${GORGIAS_USERNAME}",
         "GORGIAS_BASE_URL": "${GORGIAS_BASE_URL}"
       }
     }
   }
 }
+```
+
+Then run MCP Inspector:
+```bash
+mcp-inspector
 ```
 
 ## Usage

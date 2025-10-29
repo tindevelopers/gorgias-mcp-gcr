@@ -1,7 +1,8 @@
 """Customer management tools for Gorgias MCP server."""
 
-from typing import Any, Dict, List, Optional
-from mcp.types import Tool, TextContent
+import json
+from typing import Any, List
+from mcp.types import Tool
 from ..utils.api_client import GorgiasAPIClient
 
 
@@ -167,6 +168,13 @@ class CustomerTools:
             )
         ]
     
+    def _format_json(self, data: Any) -> str:
+        """Format data as a pretty-printed JSON string."""
+        try:
+            return json.dumps(data, indent=2, default=str)
+        except (TypeError, ValueError):
+            return str(data)
+
     async def list_customers(self, **kwargs) -> str:
         """List customers with optional filtering.
         
@@ -188,8 +196,9 @@ class CustomerTools:
             if "created_before" in kwargs:
                 params["created_before"] = kwargs["created_before"]
             
-            response = await self.api_client.get("customers", params=params)
-            return f"Found {len(response.get('data', []))} customers:\n{response}"
+            data = await self.api_client.get("customers", params=params)
+            count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            return f"Found {count} customers:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error listing customers: {str(e)}"
@@ -204,8 +213,8 @@ class CustomerTools:
             JSON string of customer data.
         """
         try:
-            response = await self.api_client.get(f"customers/{customer_id}")
-            return f"Customer {customer_id} details:\n{response}"
+            data = await self.api_client.get(f"customers/{customer_id}")
+            return f"Customer {customer_id} details:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error getting customer {customer_id}: {str(e)}"
@@ -234,8 +243,11 @@ class CustomerTools:
             if "language" in kwargs:
                 customer_data["language"] = kwargs["language"]
             
-            response = await self.api_client.post("customers", data=customer_data)
-            return f"Created customer {response.get('id', 'unknown')}:\n{response}"
+            data = await self.api_client.post("customers", data=customer_data)
+            customer_identifier = (
+                data.get("id", "unknown") if isinstance(data, dict) else "unknown"
+            )
+            return f"Created customer {customer_identifier}:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error creating customer: {str(e)}"
@@ -264,8 +276,8 @@ class CustomerTools:
             if "language" in kwargs:
                 update_data["language"] = kwargs["language"]
             
-            response = await self.api_client.put(f"customers/{customer_id}", data=update_data)
-            return f"Updated customer {customer_id}:\n{response}"
+            data = await self.api_client.put(f"customers/{customer_id}", data=update_data)
+            return f"Updated customer {customer_id}:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error updating customer {customer_id}: {str(e)}"
@@ -286,8 +298,12 @@ class CustomerTools:
                 "limit": limit
             }
             
-            response = await self.api_client.get("customers/search", params=params)
-            return f"Found {len(response.get('data', []))} customers matching '{query}':\n{response}"
+            data = await self.api_client.get("customers/search", params=params)
+            count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            return (
+                f"Found {count} customers matching '{query}':\n"
+                f"{self._format_json(data)}"
+            )
             
         except Exception as e:
             return f"Error searching customers: {str(e)}"
@@ -308,8 +324,12 @@ class CustomerTools:
                 "limit": limit
             }
             
-            response = await self.api_client.get("tickets", params=params)
-            return f"Found {len(response.get('data', []))} tickets for customer {customer_id}:\n{response}"
+            data = await self.api_client.get("tickets", params=params)
+            count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            return (
+                f"Found {count} tickets for customer {customer_id}:\n"
+                f"{self._format_json(data)}"
+            )
             
         except Exception as e:
             return f"Error getting tickets for customer {customer_id}: {str(e)}"

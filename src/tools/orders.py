@@ -1,7 +1,8 @@
 """Order management tools for Gorgias MCP server."""
 
-from typing import Any, Dict, List, Optional
-from mcp.types import Tool, TextContent
+import json
+from typing import Any, List
+from mcp.types import Tool
 from ..utils.api_client import GorgiasAPIClient
 
 
@@ -130,6 +131,13 @@ class OrderTools:
             )
         ]
     
+    def _format_json(self, data: Any) -> str:
+        """Format data as a pretty-printed JSON string."""
+        try:
+            return json.dumps(data, indent=2, default=str)
+        except (TypeError, ValueError):
+            return str(data)
+
     async def list_orders(self, **kwargs) -> str:
         """List orders with optional filtering.
         
@@ -153,8 +161,9 @@ class OrderTools:
             if "created_before" in kwargs:
                 params["created_before"] = kwargs["created_before"]
             
-            response = await self.api_client.get("orders", params=params)
-            return f"Found {len(response.get('data', []))} orders:\n{response}"
+            data = await self.api_client.get("orders", params=params)
+            count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            return f"Found {count} orders:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error listing orders: {str(e)}"
@@ -169,8 +178,8 @@ class OrderTools:
             JSON string of order data.
         """
         try:
-            response = await self.api_client.get(f"orders/{order_id}")
-            return f"Order {order_id} details:\n{response}"
+            data = await self.api_client.get(f"orders/{order_id}")
+            return f"Order {order_id} details:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error getting order {order_id}: {str(e)}"
@@ -191,8 +200,12 @@ class OrderTools:
                 "limit": limit
             }
             
-            response = await self.api_client.get("orders/search", params=params)
-            return f"Found {len(response.get('data', []))} orders matching '{query}':\n{response}"
+            data = await self.api_client.get("orders/search", params=params)
+            count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            return (
+                f"Found {count} orders matching '{query}':\n"
+                f"{self._format_json(data)}"
+            )
             
         except Exception as e:
             return f"Error searching orders: {str(e)}"
@@ -213,8 +226,12 @@ class OrderTools:
                 "limit": limit
             }
             
-            response = await self.api_client.get("orders", params=params)
-            return f"Found {len(response.get('data', []))} orders for customer {customer_id}:\n{response}"
+            data = await self.api_client.get("orders", params=params)
+            count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            return (
+                f"Found {count} orders for customer {customer_id}:\n"
+                f"{self._format_json(data)}"
+            )
             
         except Exception as e:
             return f"Error getting orders for customer {customer_id}: {str(e)}"
@@ -238,8 +255,8 @@ class OrderTools:
             if "end_date" in kwargs:
                 params["end_date"] = kwargs["end_date"]
             
-            response = await self.api_client.get("orders/metrics", params=params)
-            return f"Order metrics:\n{response}"
+            data = await self.api_client.get("orders/metrics", params=params)
+            return f"Order metrics:\n{self._format_json(data)}"
             
         except Exception as e:
             return f"Error getting order metrics: {str(e)}"

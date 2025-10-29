@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 import httpx
 from .auth import GorgiasAuth
 
@@ -60,7 +60,19 @@ class GorgiasAPIClient:
                     json=data
                 )
                 response.raise_for_status()
-                return response.json()
+                if response.status_code == 204 or not response.content:
+                    return {"status_code": response.status_code}
+
+                try:
+                    return response.json()
+                except ValueError:
+                    logger.warning(
+                        "Received non-JSON response from %s %s", method, url
+                    )
+                    return {
+                        "status_code": response.status_code,
+                        "content": response.text
+                    }
             except httpx.HTTPStatusError as e:
                 logger.error(f"HTTP error {e.response.status_code}: {e.response.text}")
                 raise
