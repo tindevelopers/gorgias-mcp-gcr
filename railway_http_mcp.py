@@ -223,6 +223,39 @@ async def mcp_tools_call_handler(request):
             content_type='application/json'
         )
 
+
+async def mcp_resources_list_handler(request):
+    """Handle MCP resources/list requests (stub)."""
+    data = await request.json()
+    response = {
+        "jsonrpc": "2.0",
+        "id": data.get("id"),
+        "result": {
+            "resources": []
+        }
+    }
+    return web.Response(
+        text=json.dumps(response),
+        content_type='application/json'
+    )
+
+
+async def mcp_prompts_list_handler(request):
+    """Handle MCP prompts/list requests (stub)."""
+    data = await request.json()
+    response = {
+        "jsonrpc": "2.0",
+        "id": data.get("id"),
+        "result": {
+            "prompts": []
+        }
+    }
+    return web.Response(
+        text=json.dumps(response),
+        content_type='application/json'
+    )
+
+
 async def mcp_handler(request):
     """Handle all MCP requests."""
     try:
@@ -235,6 +268,10 @@ async def mcp_handler(request):
             return await mcp_tools_list_handler(request)
         elif method == "tools/call":
             return await mcp_tools_call_handler(request)
+        elif method == "resources/list":
+            return await mcp_resources_list_handler(request)
+        elif method == "prompts/list":
+            return await mcp_prompts_list_handler(request)
         else:
             return web.Response(
                 text=json.dumps({
