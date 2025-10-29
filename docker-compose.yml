@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  gorgias-mcp-server:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - GORGIAS_API_KEY=${GORGIAS_API_KEY}
+      - GORGIAS_USERNAME=${GORGIAS_USERNAME}
+      - GORGIAS_BASE_URL=${GORGIAS_BASE_URL}
+      - DEBUG=${DEBUG:-false}
+    volumes:
+      - .:/app
+    stdin_open: true
+    tty: true
+    command: ["python", "-m", "src.server"]
+
+  # HTTP mode for Railway deployment
+  gorgias-http-server:
+    build: .
+    ports:
+      - "3001:3000"
+    environment:
+      - GORGIAS_API_KEY=${GORGIAS_API_KEY}
+      - GORGIAS_USERNAME=${GORGIAS_USERNAME}
+      - GORGIAS_BASE_URL=${GORGIAS_BASE_URL}
+      - DEBUG=${DEBUG:-false}
+      - RAILWAY_ENVIRONMENT=production
+    command: ["python", "railway_http_mcp.py"]
