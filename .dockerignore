@@ -41,7 +41,6 @@ railway.json
 Procfile
 runtime.txt
 start.py
-railway_*.py
 
 # Test files
 test_*.py
