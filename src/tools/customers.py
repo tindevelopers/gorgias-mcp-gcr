@@ -1,7 +1,7 @@
 """Customer management tools for Gorgias MCP server."""
 
 import json
-from typing import Any, List
+from typing import Any, Dict, List, Optional, Tuple
 from mcp.types import Tool
 from ..utils.api_client import GorgiasAPIClient
 
@@ -220,37 +220,198 @@ class CustomerTools:
             return f"Error getting customer {customer_id}: {str(e)}"
     
     async def create_customer(self, **kwargs) -> str:
-        """Create a new customer.
-        
+        """Create a new customer, appending extra fields when possible.
+
+        This method follows the workflow requested by the user:
+
+        * Check if a customer already exists using email/phone identifiers.
+        * If the customer exists, append/update the record with any extra data.
+        * If the customer does not exist, create the minimal viable record and
+          then append the additional details.
+
         Args:
             **kwargs: Customer creation parameters.
-            
+
         Returns:
-            JSON string of created customer data.
+            A formatted string describing the actions taken.
         """
+
         try:
-            # Build customer data
-            customer_data = {
-                "email": kwargs["email"]
-            }
-            
-            if "first_name" in kwargs:
-                customer_data["first_name"] = kwargs["first_name"]
-            if "last_name" in kwargs:
-                customer_data["last_name"] = kwargs["last_name"]
-            if "phone" in kwargs:
-                customer_data["phone"] = kwargs["phone"]
-            if "language" in kwargs:
-                customer_data["language"] = kwargs["language"]
-            
-            data = await self.api_client.post("customers", data=customer_data)
-            customer_identifier = (
-                data.get("id", "unknown") if isinstance(data, dict) else "unknown"
-            )
-            return f"Created customer {customer_identifier}:\n{self._format_json(data)}"
-            
+            email: Optional[str] = kwargs.get("email")
+            phone: Optional[str] = kwargs.get("phone")
+
+            if not email and not phone:
+                return "Error creating customer: either email or phone must be provided"
+
+            messages: List[str] = []
+
+            existing = await self._find_existing_customer(email=email, phone=phone)
+
+            # Extract additional data to append after ensuring the record exists
+            update_payload, channel_payload = self._build_update_payload(kwargs)
+
+            if existing:
+                customer_id = existing.get("id")
+                messages.append(
+                    f"Customer already exists (ID: {customer_id}). Skipping creation."
+                )
+
+                update_messages = await self._append_customer_data(
+                    customer_id,
+                    update_payload,
+                    channel_payload,
+                )
+                messages.extend(update_messages)
+            else:
+                create_payload = self._build_minimal_create_payload(email=email, phone=phone)
+                created = await self.api_client.post("customers", data=create_payload)
+                customer_id = created.get("id", "unknown") if isinstance(created, dict) else "unknown"
+                messages.append(
+                    f"Created customer {customer_id}:\n{self._format_json(created)}"
+                )
+
+                update_messages = await self._append_customer_data(
+                    customer_id,
+                    update_payload,
+                    channel_payload,
+                )
+                messages.extend(update_messages)
+
+            return "\n".join(messages)
+
         except Exception as e:
             return f"Error creating customer: {str(e)}"
+
+    async def _append_customer_data(
+        self,
+        customer_id: Any,
+        update_payload: Dict[str, Any],
+        channel_payload: Optional[Dict[str, Any]]
+    ) -> List[str]:
+        """Append additional details to an existing customer record."""
+
+        messages: List[str] = []
+
+        if update_payload:
+            updated = await self.api_client.patch(
+                f"customers/{customer_id}",
+                data=update_payload,
+            )
+            messages.append(
+                f"Updated customer {customer_id}:\n{self._format_json(updated)}"
+            )
+
+        if channel_payload:
+            try:
+                # Attempt to append phone channel; ignore if the API rejects the payload
+                result = await self.api_client.post(
+                    f"customers/{customer_id}/channels",
+                    data=channel_payload,
+                )
+                messages.append(
+                    f"Appended channel(s) to customer {customer_id}:\n{self._format_json(result)}"
+                )
+            except Exception as channel_error:
+                messages.append(
+                    f"Warning: Failed to append channels for customer {customer_id}: {channel_error}"
+                )
+
+        if not messages:
+            messages.append(f"No additional data provided to append for customer {customer_id}.")
+
+        return messages
+
+    async def _find_existing_customer(
+        self,
+        *,
+        email: Optional[str],
+        phone: Optional[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Search for an existing customer by email or phone."""
+
+        # Prefer email lookup because it is deterministic
+        if email:
+            try:
+                response = await self.api_client.get(
+                    "customers",
+                    params={"email": email, "limit": 1}
+                )
+                data = response.get("data") if isinstance(response, dict) else None
+                if data:
+                    return data[0]
+            except Exception:
+                pass
+
+        # Fall back to generic search when only phone is provided
+        if phone:
+            try:
+                response = await self.api_client.get(
+                    "customers/search",
+                    params={"q": phone, "limit": 1}
+                )
+                data = response.get("data") if isinstance(response, dict) else None
+                if data:
+                    return data[0]
+            except Exception:
+                pass
+
+        return None
+
+    def _build_minimal_create_payload(
+        self,
+        *,
+        email: Optional[str],
+        phone: Optional[str]
+    ) -> Dict[str, Any]:
+        """Create the minimal payload required to create a customer."""
+
+        payload: Dict[str, Any] = {}
+
+        if email:
+            payload["email"] = email
+
+        # If no email is provided, attempt to create using a phone channel
+        if phone and not email:
+            payload["channels"] = [
+                {
+                    "type": "phone",
+                    "address": phone,
+                    "preferred": True,
+                }
+            ]
+
+        return payload
+
+    def _build_update_payload(
+        self,
+        kwargs: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """Prepare payloads for updating customer core fields and channels."""
+
+        update_payload: Dict[str, Any] = {}
+        channel_payload: Optional[Dict[str, Any]] = None
+
+        field_mapping = {
+            "first_name": "firstname",
+            "last_name": "lastname",
+            "name": "name",
+            "language": "language",
+        }
+
+        for source, target in field_mapping.items():
+            value = kwargs.get(source)
+            if value:
+                update_payload[target] = value
+
+        phone = kwargs.get("phone")
+        if phone:
+            channel_payload = {
+                "type": "phone",
+                "address": phone,
+                "preferred": True,
+            }
+
+        return update_payload, channel_payload
     
     async def update_customer(self, customer_id: int, **kwargs) -> str:
         """Update an existing customer.
@@ -276,7 +437,7 @@ class CustomerTools:
             if "language" in kwargs:
                 update_data["language"] = kwargs["language"]
             
-            data = await self.api_client.put(f"customers/{customer_id}", data=update_data)
+            data = await self.api_client.patch(f"customers/{customer_id}", data=update_data)
             return f"Updated customer {customer_id}:\n{self._format_json(data)}"
             
         except Exception as e:

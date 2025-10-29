@@ -116,6 +116,18 @@ class GorgiasAPIClient:
         """
         return await self._make_request("PUT", endpoint, data=data)
     
+    async def patch(self, endpoint: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Make a PATCH request.
+        
+        Args:
+            endpoint: API endpoint.
+            data: Request body data.
+            
+        Returns:
+            JSON response data.
+        """
+        return await self._make_request("PATCH", endpoint, data=data)
+    
     async def delete(self, endpoint: str) -> Dict[str, Any]:
         """Make a DELETE request.
         

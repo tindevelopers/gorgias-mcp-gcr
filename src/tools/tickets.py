@@ -261,7 +261,7 @@ class TicketTools:
             if "subject" in kwargs:
                 update_data["subject"] = kwargs["subject"]
             
-            data = await self.api_client.put(f"tickets/{ticket_id}", data=update_data)
+            data = await self.api_client.patch(f"tickets/{ticket_id}", data=update_data)
             return f"Updated ticket {ticket_id}:\n{self._format_json(data)}"
             
         except Exception as e:
