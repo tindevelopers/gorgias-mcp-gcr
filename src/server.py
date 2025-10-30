@@ -85,7 +85,7 @@ class GorgiasMCPServer:
                 method = getattr(self.ticket_tools, name)
                 return await method(**arguments)
             
-            elif name == "add_customer_email":
+            elif name in ["add_customer_email", "set_customer_type"]:
                 if not self.customer_tools:
                     return "Customer tools not available"
                 

@@ -192,6 +192,24 @@ class CustomerTools:
                     },
                     "required": ["customer_id", "email"]
                 }
+            ),
+            Tool(
+                name="set_customer_type",
+                description="Set customer type by updating the note field (workaround for custom fields)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "customer_id": {
+                            "type": "integer",
+                            "description": "ID of the customer"
+                        },
+                        "customer_type": {
+                            "type": "string",
+                            "description": "Customer type (e.g., Groomer, Customer, VIP, etc.)"
+                        }
+                    },
+                    "required": ["customer_id", "customer_type"]
+                }
             )
         ]
     
@@ -664,5 +682,49 @@ class CustomerTools:
             
         except Exception as e:
             return f"Error adding email to customer {customer_id}: {str(e)}"
+    
+    async def set_customer_type(self, customer_id: int, customer_type: str) -> str:
+        """Set customer type by updating the note field (workaround for custom fields).
+        
+        Args:
+            customer_id: ID of the customer.
+            customer_type: Customer type (e.g., Groomer, Customer, VIP, etc.).
+            
+        Returns:
+            JSON string of updated customer data.
+        """
+        try:
+            # Get current customer data
+            existing = await self._get_customer_details(customer_id)
+            if existing is None:
+                return f"Error: Customer {customer_id} not found"
+            
+            # Update note field with customer type information
+            update_data = {
+                "name": existing.get("name"),
+                "firstname": existing.get("firstname"),
+                "lastname": existing.get("lastname"),
+                "email": existing.get("email"),
+                "note": f"Customer Type: {customer_type} - Professional pet grooming services"
+            }
+            
+            # Include channels if they exist
+            if existing.get("channels"):
+                update_data["channels"] = existing.get("channels")
+                
+            # Include other fields
+            if existing.get("language"):
+                update_data["language"] = existing.get("language")
+            
+            result = await self.api_client.put(f"customers/{customer_id}", data=update_data)
+            
+            return (
+                f"Successfully set customer type to '{customer_type}' for customer {customer_id}. "
+                f"Note: This is stored in the note field as a workaround for custom fields:\n"
+                f"{self._format_json(result)}"
+            )
+            
+        except Exception as e:
+            return f"Error setting customer type for customer {customer_id}: {str(e)}"
 
 
