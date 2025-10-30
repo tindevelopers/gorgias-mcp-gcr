@@ -169,6 +169,29 @@ class CustomerTools:
                     },
                     "required": ["customer_id"]
                 }
+            ),
+            Tool(
+                name="add_customer_email",
+                description="Add an additional email address to a customer",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "customer_id": {
+                            "type": "integer",
+                            "description": "ID of the customer"
+                        },
+                        "email": {
+                            "type": "string",
+                            "description": "Additional email address to add"
+                        },
+                        "preferred": {
+                            "type": "boolean",
+                            "description": "Whether this email should be preferred",
+                            "default": false
+                        }
+                    },
+                    "required": ["customer_id", "email"]
+                }
             )
         ]
     
@@ -586,5 +609,60 @@ class CustomerTools:
             
         except Exception as e:
             return f"Error getting tickets for customer {customer_id}: {str(e)}"
+    
+    async def add_customer_email(self, customer_id: int, email: str, preferred: bool = False) -> str:
+        """Add an additional email address to a customer.
+        
+        Args:
+            customer_id: ID of the customer.
+            email: Additional email address to add.
+            preferred: Whether this email should be preferred.
+            
+        Returns:
+            JSON string of updated customer data.
+        """
+        try:
+            # Get current customer data to preserve existing channels
+            existing = await self._get_customer_details(customer_id)
+            if existing is None:
+                return f"Error: Customer {customer_id} not found"
+            
+            # Build channels array preserving existing channels
+            channels = existing.get("channels", []).copy()
+            
+            # Add new email channel
+            new_email_channel = {
+                "type": "email",
+                "address": email,
+                "preferred": preferred
+            }
+            channels.append(new_email_channel)
+            
+            # Update customer with new channels array
+            update_data = {
+                "name": existing.get("name"),
+                "firstname": existing.get("firstname"),
+                "lastname": existing.get("lastname"),
+                "email": existing.get("email"),
+                "channels": channels
+            }
+            
+            # Include other fields if they exist
+            if existing.get("language"):
+                update_data["language"] = existing.get("language")
+            if existing.get("note"):
+                update_data["note"] = existing.get("note")
+            
+            result = await self.api_client.put(f"customers/{customer_id}", data=update_data)
+            
+            email_count = len([c for c in result.get("channels", []) if c.get("type") == "email"])
+            return (
+                f"Successfully added email '{email}' to customer {customer_id}. "
+                f"Customer now has {email_count} email address(es):\n"
+                f"{self._format_json(result)}"
+            )
+            
+        except Exception as e:
+            return f"Error adding email to customer {customer_id}: {str(e)}"
 
 
