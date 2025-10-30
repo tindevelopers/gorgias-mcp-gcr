@@ -250,6 +250,9 @@ class CustomerTools:
             # Extract additional data to append after ensuring the record exists
             update_payload, channel_payload = self._build_update_payload(kwargs)
 
+            if update_payload.get("email") == email and len(update_payload) == 1:
+                update_payload.pop("email")
+
             if existing:
                 customer_id = existing.get("id")
                 messages.append(
@@ -292,28 +295,61 @@ class CustomerTools:
 
         messages: List[str] = []
 
-        if update_payload:
-            updated = await self.api_client.patch(
-                f"customers/{customer_id}",
-                data=update_payload,
-            )
+        # Get existing customer data to preserve channels
+        existing = await self._get_customer_details(customer_id)
+        if existing is None:
             messages.append(
-                f"Updated customer {customer_id}:\n{self._format_json(updated)}"
+                f"Warning: Unable to retrieve customer {customer_id}; skipping update."
             )
+            return messages
 
+        # Build the complete update payload
+        base_payload = self._build_base_update_payload(existing)
+        merged_payload = {**base_payload, **update_payload}
+
+        # Handle channels properly - preserve existing channels and add/update phone
+        channels = []
+        
+        # Preserve existing channels (except phone if we're updating it)
+        phone_updated = False
+        for channel in existing.get("channels", []):
+            if channel.get("type") == "phone" and channel_payload:
+                # Skip old phone channel if we're updating phone
+                phone_updated = True
+                continue
+            elif channel.get("type") == "email" or not channel_payload:
+                # Keep email channels and other non-phone channels
+                channels.append(channel)
+
+        # Add new phone channel if provided
         if channel_payload:
+            channels.append(channel_payload)
+        elif not phone_updated:
+            # If no phone update requested, keep existing phone channels
+            for channel in existing.get("channels", []):
+                if channel.get("type") == "phone":
+                    channels.append(channel)
+
+        # Include channels in the update payload
+        if channels:
+            merged_payload["channels"] = channels
+
+        if not merged_payload:
+            messages.append(
+                f"Skipped updating customer {customer_id}: no valid data to send."
+            )
+        else:
             try:
-                # Attempt to append phone channel; ignore if the API rejects the payload
-                result = await self.api_client.post(
-                    f"customers/{customer_id}/channels",
-                    data=channel_payload,
+                updated = await self.api_client.put(
+                    f"customers/{customer_id}",
+                    data=merged_payload,
                 )
                 messages.append(
-                    f"Appended channel(s) to customer {customer_id}:\n{self._format_json(result)}"
+                    f"Updated customer {customer_id}:\n{self._format_json(updated)}"
                 )
-            except Exception as channel_error:
+            except Exception as update_error:
                 messages.append(
-                    f"Warning: Failed to append channels for customer {customer_id}: {channel_error}"
+                    f"Warning: Failed to update customer {customer_id}: {update_error}"
                 )
 
         if not messages:
@@ -396,12 +432,33 @@ class CustomerTools:
             "last_name": "lastname",
             "name": "name",
             "language": "language",
+            "email": "email",
         }
 
         for source, target in field_mapping.items():
             value = kwargs.get(source)
+            if isinstance(value, str):
+                value = value.strip()
             if value:
                 update_payload[target] = value
+
+        first_name = kwargs.get("first_name")
+        last_name = kwargs.get("last_name")
+        explicit_name = kwargs.get("name")
+
+        if isinstance(first_name, str):
+            first_name = first_name.strip()
+        if isinstance(last_name, str):
+            last_name = last_name.strip()
+        if isinstance(explicit_name, str):
+            explicit_name = explicit_name.strip()
+
+        if explicit_name:
+            update_payload["name"] = explicit_name
+        else:
+            parts = [part for part in (first_name, last_name) if part]
+            if parts:
+                update_payload["name"] = " ".join(parts)
 
         phone = kwargs.get("phone")
         if phone:
@@ -412,6 +469,39 @@ class CustomerTools:
             }
 
         return update_payload, channel_payload
+
+    async def _get_customer_details(self, customer_id: Any) -> Optional[Dict[str, Any]]:
+        """Retrieve the latest customer details to support update operations."""
+
+        try:
+            data = await self.api_client.get(f"customers/{customer_id}")
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
+
+    def _build_base_update_payload(
+        self,
+        existing: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Prepare required base fields for a customer update request."""
+
+        if not existing:
+            return {}
+
+        base_fields: Dict[str, Any] = {}
+
+        for key in ["email", "name", "language", "firstname", "lastname"]:
+            value = existing.get(key)
+            if value:
+                base_fields[key] = value
+
+        if not base_fields.get("email") and existing.get("channels"):
+            for channel in existing["channels"]:
+                if channel.get("type") == "email" and channel.get("address"):
+                    base_fields["email"] = channel["address"]
+                    break
+
+        return base_fields
     
     async def update_customer(self, customer_id: int, **kwargs) -> str:
         """Update an existing customer.
@@ -424,21 +514,18 @@ class CustomerTools:
             JSON string of updated customer data.
         """
         try:
-            # Build update data
-            update_data = {}
-            if "email" in kwargs:
-                update_data["email"] = kwargs["email"]
-            if "first_name" in kwargs:
-                update_data["first_name"] = kwargs["first_name"]
-            if "last_name" in kwargs:
-                update_data["last_name"] = kwargs["last_name"]
-            if "phone" in kwargs:
-                update_data["phone"] = kwargs["phone"]
-            if "language" in kwargs:
-                update_data["language"] = kwargs["language"]
-            
-            data = await self.api_client.patch(f"customers/{customer_id}", data=update_data)
-            return f"Updated customer {customer_id}:\n{self._format_json(data)}"
+            update_payload, channel_payload = self._build_update_payload(kwargs)
+
+            if not update_payload and not channel_payload:
+                return f"No valid update fields provided for customer {customer_id}."
+
+            messages = await self._append_customer_data(
+                customer_id,
+                update_payload,
+                channel_payload,
+            )
+
+            return "\n".join(messages)
             
         except Exception as e:
             return f"Error updating customer {customer_id}: {str(e)}"
