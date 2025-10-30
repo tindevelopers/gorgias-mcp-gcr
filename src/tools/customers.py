@@ -187,7 +187,7 @@ class CustomerTools:
                         "preferred": {
                             "type": "boolean",
                             "description": "Whether this email should be preferred",
-                            "default": false
+                            "default": False
                         }
                     },
                     "required": ["customer_id", "email"]
