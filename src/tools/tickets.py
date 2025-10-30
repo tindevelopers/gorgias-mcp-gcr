@@ -1,7 +1,8 @@
 """Ticket management tools for Gorgias MCP server."""
 
 import json
-from typing import Any, List
+import os
+from typing import Any, List, Optional
 from mcp.types import Tool
 from ..utils.api_client import GorgiasAPIClient
 
@@ -218,24 +219,95 @@ class TicketTools:
             JSON string of created ticket data.
         """
         try:
-            # Build ticket data
-            ticket_data = {
-                "subject": kwargs["subject"],
-                "body": kwargs["body"],
-                "customer_id": kwargs["customer_id"]
+            subject: str = kwargs["subject"].strip()
+            body: str = kwargs["body"].strip()
+            customer_id: int = kwargs["customer_id"]
+
+            if not subject:
+                return "Error creating ticket: subject cannot be empty."
+            if not body:
+                return "Error creating ticket: body cannot be empty."
+
+            customer = await self.api_client.get(f"customers/{customer_id}")
+            if not isinstance(customer, dict):
+                return (
+                    f"Error creating ticket: unable to load customer {customer_id}."
+                )
+
+            customer_email: Optional[str] = customer.get("email")
+            if not customer_email and customer.get("channels"):
+                for channel in customer["channels"]:
+                    if channel.get("type") == "email" and channel.get("address"):
+                        customer_email = channel["address"]
+                        break
+
+            if not customer_email:
+                return (
+                    "Error creating ticket: customer does not have an email address on file."
+                )
+
+            customer_name: Optional[str] = customer.get("name")
+            if not customer_name:
+                firstname = customer.get("firstname", "").strip()
+                lastname = customer.get("lastname", "").strip()
+                combined = " ".join(part for part in [firstname, lastname] if part)
+                customer_name = combined or customer_email
+
+            support_email = (
+                os.getenv("GORGIAS_INBOX_EMAIL")
+                or os.getenv("GORGIAS_SUPPORT_EMAIL")
+                or getattr(self.api_client.auth, "username", None)
+            )
+
+            if not support_email:
+                return (
+                    "Error creating ticket: support email destination is not configured."
+                )
+
+            message_payload = {
+                "from_agent": False,
+                "public": True,
+                "subject": subject,
+                "body_text": body,
+                "channel": "email",
+                "via": "email",
+                "sender": {"id": customer_id},
+                "source": {
+                    "type": "email",
+                    "from": {
+                        "name": customer_name,
+                        "address": customer_email,
+                    },
+                    "to": [
+                        {
+                            "name": "Support",
+                            "address": support_email,
+                        }
+                    ],
+                    "cc": [],
+                    "bcc": [],
+                },
             }
-            
-            if "priority" in kwargs:
-                ticket_data["priority"] = kwargs["priority"]
-            if "assignee_id" in kwargs:
-                ticket_data["assignee_id"] = kwargs["assignee_id"]
-            
+
+            ticket_data = {
+                "subject": subject,
+                "status": kwargs.get("status", "open"),
+                "priority": kwargs.get("priority", "normal"),
+                "channel": "email",
+                "via": "api",
+                "messages": [message_payload],
+            }
+
+            assignee_id = kwargs.get("assignee_id")
+            if assignee_id is not None:
+                ticket_data["assignee_id"] = assignee_id
+
             data = await self.api_client.post("tickets", data=ticket_data)
             ticket_identifier = (
                 data.get("id", "unknown") if isinstance(data, dict) else "unknown"
             )
             return f"Created ticket {ticket_identifier}:\n{self._format_json(data)}"
-            
+
         except Exception as e:
             return f"Error creating ticket: {str(e)}"
     
@@ -261,7 +333,7 @@ class TicketTools:
             if "subject" in kwargs:
                 update_data["subject"] = kwargs["subject"]
             
-            data = await self.api_client.patch(f"tickets/{ticket_id}", data=update_data)
+            data = await self.api_client.put(f"tickets/{ticket_id}", data=update_data)
             return f"Updated ticket {ticket_id}:\n{self._format_json(data)}"
             
         except Exception as e:
