@@ -123,6 +123,10 @@ class CustomerTools:
                         "language": {
                             "type": "string",
                             "description": "New customer language preference"
+                        },
+                        "note": {
+                            "type": "string",
+                            "description": "Customer note or comment"
                         }
                     },
                     "required": ["customer_id"]
@@ -433,6 +437,7 @@ class CustomerTools:
             "name": "name",
             "language": "language",
             "email": "email",
+            "note": "note",
         }
 
         for source, target in field_mapping.items():
