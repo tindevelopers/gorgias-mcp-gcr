@@ -300,7 +300,8 @@ class TicketTools:
 
             assignee_id = kwargs.get("assignee_id")
             if assignee_id is not None:
-                ticket_data["assignee_id"] = assignee_id
+                # Gorgias API expects assignee_user as an object with id field
+                ticket_data["assignee_user"] = {"id": assignee_id}
 
             data = await self.api_client.post("tickets", data=ticket_data)
             ticket_identifier = (
@@ -329,7 +330,8 @@ class TicketTools:
             if "priority" in kwargs:
                 update_data["priority"] = kwargs["priority"]
             if "assignee_id" in kwargs:
-                update_data["assignee_id"] = kwargs["assignee_id"]
+                # Gorgias API expects assignee_user as an object with id field
+                update_data["assignee_user"] = {"id": kwargs["assignee_id"]}
             if "subject" in kwargs:
                 update_data["subject"] = kwargs["subject"]
             
