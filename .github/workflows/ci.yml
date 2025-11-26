@@ -96,7 +96,6 @@ jobs:
       run: |
         python -c "
         import json
-        import yaml
         
         # Test railway.json
         with open('railway.json', 'r') as f:
