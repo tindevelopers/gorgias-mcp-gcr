@@ -41,3 +41,15 @@ deploy-test: ## Test deployment configuration
 	python -c "import json; json.load(open('railway.json')); print('✅ railway.json valid')"
 	python -c "import json; json.load(open('mcp_config.json')); print('✅ mcp_config.json valid')"
 	@echo "✅ Deployment configuration is valid"
+
+monitor-ci: ## Monitor CI/CD deployment status
+	@./monitor-ci.sh --once
+
+monitor-ci-live: ## Monitor CI/CD deployment status (continuous)
+	@./monitor-ci.sh
+
+monitor-workflow: ## Monitor a specific GitHub Actions workflow run
+	@./monitor-workflow.sh $(WORKFLOW_ID)
+
+monitor-builds: ## Monitor GitHub Actions builds for new commits until success
+	@./monitor-builds.sh $(BRANCH)

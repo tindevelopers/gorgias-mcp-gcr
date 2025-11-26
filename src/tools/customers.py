@@ -1,9 +1,12 @@
 """Customer management tools for Gorgias MCP server."""
 
 import json
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 from mcp.types import Tool
 from ..utils.api_client import GorgiasAPIClient
+
+logger = logging.getLogger(__name__)
 
 
 class CustomerTools:
@@ -420,8 +423,8 @@ class CustomerTools:
                 data = response.get("data") if isinstance(response, dict) else None
                 if data:
                     return data[0]
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to search customer by email {email}: {e}")
 
         # Fall back to generic search when only phone is provided
         if phone:
@@ -433,8 +436,8 @@ class CustomerTools:
                 data = response.get("data") if isinstance(response, dict) else None
                 if data:
                     return data[0]
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to search customer by phone {phone}: {e}")
 
         return None
 

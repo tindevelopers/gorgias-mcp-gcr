@@ -54,7 +54,7 @@ jobs:
       run: |
         python -c "
         import os
-        os.environ['GORGIAS_API_KEY'] = 'test_key'
+        os.environ['GORGIAS_API_KEY'] = 'test_key_12345'
         os.environ['GORGIAS_USERNAME'] = 'test@example.com'
         os.environ['GORGIAS_BASE_URL'] = 'https://test.gorgias.com/api/'
         
@@ -73,7 +73,7 @@ jobs:
       run: |
         python -c "
         import os
-        os.environ['GORGIAS_API_KEY'] = 'test_key'
+        os.environ['GORGIAS_API_KEY'] = 'test_key_12345'
         os.environ['GORGIAS_USERNAME'] = 'test@example.com'
         os.environ['GORGIAS_BASE_URL'] = 'https://test.gorgias.com/api/'
         os.environ['PORT'] = '3000'
@@ -180,7 +180,7 @@ jobs:
       run: |
         python -c "
         import os
-        os.environ['GORGIAS_API_KEY'] = 'test_key'
+        os.environ['GORGIAS_API_KEY'] = 'test_key_12345'
         os.environ['GORGIAS_USERNAME'] = 'test@example.com'
         os.environ['GORGIAS_BASE_URL'] = 'https://test.gorgias.com/api/'
         os.environ['PORT'] = '3000'
