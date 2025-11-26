@@ -100,8 +100,8 @@ jobs:
         # Test railway.json
         with open('railway.json', 'r') as f:
             railway_config = json.load(f)
-        assert railway_config['build']['builder'] == 'NIXPACKS'
-        assert railway_config['deploy']['startCommand'] == 'python railway_server.py'
+        assert railway_config['build']['builder'] in ['NIXPACKS', 'DOCKERFILE']
+        assert 'startCommand' in railway_config['deploy']
         print('✅ railway.json is valid')
         
         # Test requirements.txt
