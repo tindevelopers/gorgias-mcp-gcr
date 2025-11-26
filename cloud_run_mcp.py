@@ -8,13 +8,12 @@ import logging
 import json
 from pathlib import Path
 from aiohttp import web
-from aiohttp.web import Request, Response
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.server import GorgiasMCPServer
+from src.server import GorgiasMCPServer  # noqa: E402
 
 # Configure logging for Cloud Run
 logging.basicConfig(
@@ -25,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Global MCP server instance
 mcp_server = None
+
 
 def check_environment():
     """Check if required environment variables are set."""
