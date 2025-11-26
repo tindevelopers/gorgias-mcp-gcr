@@ -1,0 +1,50 @@
+# Google Cloud Build ignore file
+# Similar to .gitignore but for Cloud Build
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Config files (keep only what's needed)
+mcp_config.json
+mcp_config_railway.json
+env.example
+
+# Deployment guides (keep main one)
+RAILWAY_DEPLOYMENT.md
+DOCKER_DEPLOYMENT.md
+MCP_DEPLOYMENT_GUIDE.md
+
+# Other
+.DS_Store
+*.log
+

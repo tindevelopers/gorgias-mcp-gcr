@@ -3,9 +3,10 @@
     "gorgias": {
       "command": "python",
       "args": ["-m", "src.server"],
-      "cwd": "/Users/foo/projects/gorgias-mcp-server",
+      "cwd": "/Users/gene/Projects/gorgias-mcp-server-1",
       "env": {
         "GORGIAS_API_KEY": "${GORGIAS_API_KEY}",
+        "GORGIAS_USERNAME": "${GORGIAS_USERNAME}",
         "GORGIAS_BASE_URL": "${GORGIAS_BASE_URL}"
       }
     }
