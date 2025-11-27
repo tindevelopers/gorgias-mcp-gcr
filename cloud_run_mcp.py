@@ -58,7 +58,7 @@ async def healthcheck_handler(request):
             text=json.dumps({
                 "status": "healthy",
                 "message": "Gorgias MCP Server is running",
-                "environment": os.getenv("RAILWAY_ENVIRONMENT", "cloud-run"),
+                "environment": "google-cloud-run",
                 "tools_count": len(tools),
                 "tools": [tool.name for tool in tools],
                 "streaming": True

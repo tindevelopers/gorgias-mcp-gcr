@@ -15,8 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Ensure the railway_http_mcp.py file is available
-RUN ls -la /app/railway_http_mcp.py || echo "railway_http_mcp.py not found"
+# Ensure the cloud_run_mcp.py file is available
+RUN ls -la /app/cloud_run_mcp.py || echo "cloud_run_mcp.py not found"
 
 # Create startup script
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
@@ -26,11 +26,11 @@ RUN chmod +x /app/docker-entrypoint.sh
 RUN useradd -m -u 1000 mcpuser && chown -R mcpuser:mcpuser /app
 USER mcpuser
 
-# Expose port for HTTP healthcheck
-EXPOSE 3000
+# Expose port for HTTP server (Cloud Run uses 8080)
+EXPOSE 8080
 
 # Set environment variables
-ENV PORT=3000
+ENV PORT=8080
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 

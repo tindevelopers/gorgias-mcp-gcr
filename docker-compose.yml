@@ -16,15 +16,17 @@ services:
     tty: true
     command: ["python", "-m", "src.server"]
 
-  # HTTP mode for Railway deployment
-  gorgias-http-server:
-    build: .
+  # HTTP mode for Cloud Run deployment (local testing)
+  gorgias-cloud-run-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.cloudrun
     ports:
-      - "3001:3000"
+      - "8080:8080"
     environment:
       - GORGIAS_API_KEY=${GORGIAS_API_KEY}
       - GORGIAS_USERNAME=${GORGIAS_USERNAME}
       - GORGIAS_BASE_URL=${GORGIAS_BASE_URL}
       - DEBUG=${DEBUG:-false}
-      - RAILWAY_ENVIRONMENT=production
-    command: ["python", "railway_http_mcp.py"]
+      - PORT=8080
+    command: ["python", "cloud_run_mcp.py"]

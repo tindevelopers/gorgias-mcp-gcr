@@ -69,20 +69,19 @@ jobs:
             exit(1)
         "
     
-    - name: Test Railway server
+    - name: Test Cloud Run server
       run: |
         python -c "
         import os
         os.environ['GORGIAS_API_KEY'] = 'test_key_12345'
         os.environ['GORGIAS_USERNAME'] = 'test@example.com'
         os.environ['GORGIAS_BASE_URL'] = 'https://test.gorgias.com/api/'
-        os.environ['PORT'] = '3000'
+        os.environ['PORT'] = '8080'
         
         # Test import without running the server
-        from railway_server import check_environment, init_mcp_server
-        import asyncio
+        from cloud_run_mcp import check_environment
         
-        print('✅ Railway server imports successful')
+        print('✅ Cloud Run server imports successful')
         
         # Test environment check
         if check_environment():
@@ -97,12 +96,13 @@ jobs:
         python -c "
         import json
         
-        # Test railway.json
-        with open('railway.json', 'r') as f:
-            railway_config = json.load(f)
-        assert railway_config['build']['builder'] in ['NIXPACKS', 'DOCKERFILE']
-        assert 'startCommand' in railway_config['deploy']
-        print('✅ railway.json is valid')
+        # Test cloudbuild.yaml exists and is valid YAML
+        import yaml
+        with open('cloudbuild.yaml', 'r') as f:
+            cloudbuild_config = yaml.safe_load(f)
+        assert 'steps' in cloudbuild_config
+        assert 'images' in cloudbuild_config
+        print('✅ cloudbuild.yaml is valid')
         
         # Test requirements.txt
         with open('requirements.txt', 'r') as f:
@@ -175,16 +175,16 @@ jobs:
         pip install -r requirements.txt
         echo "✅ Build process completed successfully"
     
-    - name: Test server startup (dry run)
+    - name: Test Cloud Run server startup (dry run)
       run: |
         python -c "
         import os
         os.environ['GORGIAS_API_KEY'] = 'test_key_12345'
         os.environ['GORGIAS_USERNAME'] = 'test@example.com'
         os.environ['GORGIAS_BASE_URL'] = 'https://test.gorgias.com/api/'
-        os.environ['PORT'] = '3000'
+        os.environ['PORT'] = '8080'
         
         # Test that the server can be imported and basic functions work
-        from railway_server import check_environment, init_mcp_server
-        print('✅ Server startup test passed')
+        from cloud_run_mcp import check_environment
+        print('✅ Cloud Run server startup test passed')
         "

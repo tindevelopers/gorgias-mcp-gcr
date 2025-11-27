@@ -1,6 +1,6 @@
 # Gorgias MCP Server Makefile
 
-.PHONY: help install test lint clean run-railway run-mcp
+.PHONY: help install test lint clean run-mcp run-cloud-run
 
 help: ## Show this help message
 	@echo "Gorgias MCP Server - Available Commands:"
@@ -25,11 +25,11 @@ clean: ## Clean up cache files
 	find . -type f -name "*.pyc" -delete
 	find . -type f -name "*.pyo" -delete
 
-run-railway: ## Run Railway server locally
-	python railway_server.py
-
-run-mcp: ## Run MCP server locally
+run-mcp: ## Run MCP server locally (stdio mode)
 	python -m src.server
+
+run-cloud-run: ## Run Cloud Run server locally
+	python cloud_run_mcp.py
 
 run-example: ## Run example usage
 	python example_usage.py
@@ -37,9 +37,9 @@ run-example: ## Run example usage
 ci: install test lint ## Run full CI pipeline locally
 
 deploy-test: ## Test deployment configuration
-	@echo "Testing Railway configuration..."
-	python -c "import json; json.load(open('railway.json')); print('✅ railway.json valid')"
+	@echo "Testing Cloud Run configuration..."
 	python -c "import json; json.load(open('mcp_config.json')); print('✅ mcp_config.json valid')"
+	python -c "import yaml; yaml.safe_load(open('cloudbuild.yaml')); print('✅ cloudbuild.yaml valid')"
 	@echo "✅ Deployment configuration is valid"
 
 monitor-ci: ## Monitor CI/CD deployment status

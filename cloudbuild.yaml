@@ -1,11 +1,14 @@
 # Cloud Build configuration for Google Cloud Run deployment
+substitutions:
+  _IMAGE_TAG: '${SHORT_SHA}'  # Will use BUILD_ID if SHORT_SHA is empty
+
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:${_IMAGE_TAG}'
       - '-t'
       - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:latest'
       - '-f'
@@ -16,7 +19,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:${_IMAGE_TAG}'
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -31,7 +34,7 @@ steps:
       - 'deploy'
       - 'gorgias-mcp-server'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:${_IMAGE_TAG}'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -46,12 +49,14 @@ steps:
       - '--cpu'
       - '1'
       - '--timeout'
-      - '60'
+      - '300'
       - '--port'
       - '8080'
+      - '--set-env-vars'
+      - 'GORGIAS_BASE_URL=https://petstoredirect.gorgias.com/api/,DEBUG=false,GORGIAS_API_KEY=placeholder,GORGIAS_USERNAME=placeholder@example.com'
 
 images:
-  - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:${_IMAGE_TAG}'
   - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:latest'
 
 options:

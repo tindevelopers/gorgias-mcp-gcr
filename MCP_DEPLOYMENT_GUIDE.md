@@ -1,46 +1,80 @@
 # MCP Server Deployment Guide
 
-## 🚨 **Important: Railway Limitation**
+## ✅ **Google Cloud Run Deployment (Recommended)**
 
-**Railway is NOT suitable for MCP servers** because:
-- MCP requires **stdio communication** (stdin/stdout)
-- Railway is designed for **HTTP services**
-- External MCP clients cannot connect to Railway-deployed stdio services
+This server is designed for **Google Cloud Run** deployment with **HTTPS streaming support**:
+- ✅ **HTTP/HTTPS** - Full HTTP-based MCP protocol support
+- ✅ **Streaming** - Server-Sent Events (SSE) for real-time responses
+- ✅ **HTTPS** - Secure connections via Cloud Run's managed HTTPS
+- ✅ **Scalable** - Auto-scaling with Cloud Run
+- ✅ **Production-ready** - Always-on instances for fast responses
 
-## ✅ **Proper MCP Deployment Options**
+## 🚀 **Deployment Options**
 
-### Option 1: Local Development (Recommended)
+### Option 1: Google Cloud Run (Production - Recommended)
+
+Deploy to Google Cloud Run for production use with HTTPS streaming:
+
+```bash
+# Deploy using Cloud Build
+gcloud builds submit --config cloudbuild.yaml
+
+# Or see CLOUD_RUN_DEPLOYMENT.md for detailed instructions
+```
+
+**Features:**
+- HTTPS endpoint: `https://your-service.run.app/mcp`
+- Streaming support via Server-Sent Events (SSE)
+- Auto-scaling
+- Always-on instances (configurable)
+- Managed HTTPS certificates
+
+### Option 2: Local Development (MCP stdio)
+
+For local development and testing with MCP Inspector:
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
 # Run MCP server locally
 python -m src.server
-
-# Or use the example
-python example_usage.py
 ```
 
-### Option 2: Docker with stdio support
+### Option 3: Docker with stdio support
+
+For local Docker testing:
+
 ```dockerfile
 FROM python:3.13-slim
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 CMD ["python", "-m", "src.server"]
 ```
 
-### Option 3: VPS/Server with stdio
-- Deploy to a VPS that supports stdio
-- Use systemd to manage the service
-- Ensure proper environment variables
-
 ## 🔧 **MCP Client Configuration**
 
-For external MCP clients (like retellai.com), use this configuration:
+### For Google Cloud Run (HTTPS)
+
+Use HTTP-based MCP protocol over HTTPS:
+
+```json
+{
+  "mcpServers": {
+    "gorgias": {
+      "url": "https://your-service.run.app/mcp",
+      "transport": "http",
+      "streaming": true
+    }
+  }
+}
+```
+
+### For Local Development (stdio)
 
 ```json
 {
@@ -59,32 +93,44 @@ For external MCP clients (like retellai.com), use this configuration:
 }
 ```
 
-## 🚀 **Quick Start for External Clients**
+## 🌊 **HTTPS Streaming Support**
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/tindevelopers/gorgias-mcp-server.git
-   cd gorgias-mcp-server
-   ```
+The Google Cloud Run deployment supports **Server-Sent Events (SSE)** for streaming responses:
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Standard Request (Non-Streaming)
 
-3. **Set environment variables**:
-   ```bash
-   export GORGIAS_API_KEY="your_api_key"
-   export GORGIAS_USERNAME="your_email"
-   export GORGIAS_BASE_URL="https://your-store.gorgias.com/api/"
-   ```
+```bash
+curl -X POST https://YOUR_SERVICE_URL.run.app/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "get_ticket",
+      "arguments": {"ticket_id": 63168463}
+    }
+  }'
+```
 
-4. **Test the server**:
-   ```bash
-   python -m src.server
-   ```
+### Streaming Request (HTTPS SSE)
 
-5. **Configure your MCP client** with the stdio command
+```bash
+curl -X POST https://YOUR_SERVICE_URL.run.app/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "get_ticket",
+      "arguments": {"ticket_id": 63168463},
+      "stream": true
+    }
+  }'
+```
+
+The streaming response uses Server-Sent Events (SSE) format over HTTPS.
 
 ## 📋 **Available Tools**
 
@@ -101,29 +147,12 @@ The MCP server provides these tools:
 - `update_ticket` - Update ticket information
 - `search_tickets` - Search tickets
 
-## ⚠️ **Why Railway Doesn't Work**
-
-Railway is designed for:
-- ✅ HTTP web services
-- ✅ REST APIs
-- ✅ Web applications
-
-MCP requires:
-- ❌ stdio communication (stdin/stdout)
-- ❌ Process-based communication
-- ❌ Direct process spawning
-
 ## 🎯 **Recommendation**
 
-For production MCP server deployment:
-1. **Use a VPS** (DigitalOcean, Linode, AWS EC2)
-2. **Deploy with Docker** and stdio support
-3. **Use systemd** for process management
-4. **Configure proper networking** for MCP clients
+For production deployment:
+1. **Use Google Cloud Run** - HTTPS streaming support, auto-scaling, production-ready
+2. **Configure always-on instances** - For fast response times
+3. **Set up monitoring** - Use Cloud Run metrics and logs
+4. **Use HTTPS endpoint** - Secure connections via Cloud Run's managed certificates
 
-The current Railway deployment is only useful for:
-- Health checks
-- Status monitoring
-- Testing HTTP endpoints
-
-But **NOT for actual MCP client connections**.
+See `CLOUD_RUN_DEPLOYMENT.md` for detailed deployment instructions.

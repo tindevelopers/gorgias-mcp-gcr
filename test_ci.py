@@ -50,10 +50,10 @@ def test_imports():
         return False
     
     try:
-        from railway_server import check_environment, init_mcp_server
-        print("✅ Railway server imports successful")
+        from cloud_run_mcp import check_environment
+        print("✅ Cloud Run server imports successful")
     except Exception as e:
-        print(f"❌ Railway server imports failed: {e}")
+        print(f"❌ Cloud Run server imports failed: {e}")
         return False
     
     return True
@@ -100,7 +100,7 @@ def test_environment_check():
     print("\n🔍 Testing environment check...")
     
     try:
-        from railway_server import check_environment
+        from cloud_run_mcp import check_environment
         
         # Test with valid environment
         if check_environment():
@@ -136,13 +136,14 @@ def test_configuration_files():
     try:
         import json
         
-        # Test railway.json
-        with open('railway.json', 'r') as f:
-            railway_config = json.load(f)
+        # Test cloudbuild.yaml exists and is valid
+        import yaml
+        with open('cloudbuild.yaml', 'r') as f:
+            cloudbuild_config = yaml.safe_load(f)
         
-        assert railway_config['build']['builder'] == 'NIXPACKS'
-        assert railway_config['deploy']['startCommand'] == 'python railway_server.py'
-        print("✅ railway.json is valid")
+        assert 'steps' in cloudbuild_config
+        assert 'images' in cloudbuild_config
+        print("✅ cloudbuild.yaml is valid")
         
         # Test mcp_config.json
         with open('mcp_config.json', 'r') as f:

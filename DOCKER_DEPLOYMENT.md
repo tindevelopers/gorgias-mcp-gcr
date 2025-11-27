@@ -4,8 +4,8 @@
 
 This Docker setup provides **two deployment modes**:
 
-1. **MCP stdio mode** - For local development and VPS deployment
-2. **HTTP mode** - For Railway deployment (healthchecks only)
+1. **MCP stdio mode** - For local development and testing
+2. **HTTP mode** - For Google Cloud Run deployment with HTTPS streaming support
 
 ## 🚀 **Quick Start**
 
@@ -23,61 +23,71 @@ docker run -it --rm \
   gorgias-mcp-server
 ```
 
-### **Railway Deployment (HTTP mode)**
+### **Google Cloud Run Deployment (HTTP mode with streaming)**
 ```bash
-# Build and run in HTTP mode
-docker-compose up gorgias-http-server
+# Build and run locally for testing
+docker-compose up gorgias-cloud-run-server
 
 # Or run directly
-docker run -p 3000:3000 \
+docker run -p 8080:8080 \
   -e GORGIAS_API_KEY="your_api_key" \
   -e GORGIAS_USERNAME="your_email" \
   -e GORGIAS_BASE_URL="https://your-store.gorgias.com/api/" \
-  -e RAILWAY_ENVIRONMENT=production \
+  -e PORT=8080 \
   gorgias-mcp-server
 ```
 
 ## 🔧 **Docker Features**
 
 ### **Multi-Mode Support**
-- **MCP stdio mode**: Full MCP functionality for external clients
-- **HTTP mode**: Railway-compatible with healthcheck endpoints
+- **MCP stdio mode**: Full MCP functionality for local development
+- **HTTP mode**: Google Cloud Run deployment with HTTPS streaming support
 
 ### **Environment Detection**
-- Automatically detects Railway environment
-- Switches between MCP and HTTP modes accordingly
+- Automatically detects PORT environment variable
+- Switches between MCP stdio and HTTP modes accordingly
 
 ### **Security**
 - Non-root user execution
 - Minimal base image (python:3.13-slim)
 - No unnecessary packages
 
-## 📋 **Railway Deployment Steps**
+## 📋 **Google Cloud Run Deployment Steps**
 
-1. **Push to GitHub**:
+1. **Build and deploy using Cloud Build**:
    ```bash
-   git add .
-   git commit -m "Add Docker support for Railway deployment"
-   git push origin railway-deploy
+   gcloud builds submit --config cloudbuild.yaml
    ```
 
-2. **Railway will automatically**:
-   - Detect Dockerfile
-   - Build Docker image
-   - Deploy with HTTP mode
-   - Provide healthcheck endpoints
+2. **Or deploy manually**:
+   ```bash
+   # Build Docker image
+   docker build -f Dockerfile.cloudrun -t gcr.io/PROJECT_ID/gorgias-mcp-server .
+   
+   # Push to Container Registry
+   docker push gcr.io/PROJECT_ID/gorgias-mcp-server
+   
+   # Deploy to Cloud Run
+   gcloud run deploy gorgias-mcp-server \
+     --image gcr.io/PROJECT_ID/gorgias-mcp-server \
+     --region us-central1 \
+     --platform managed \
+     --allow-unauthenticated
+   ```
 
-3. **Set environment variables** in Railway:
+3. **Set environment variables** in Cloud Run:
    - `GORGIAS_API_KEY`
    - `GORGIAS_USERNAME`
    - `GORGIAS_BASE_URL`
    - `DEBUG=false`
 
-## 🌐 **Available Endpoints (Railway)**
+## 🌐 **Available Endpoints (Cloud Run)**
 
 - **`/`** - Health check
-- **`/health`** - Detailed health status
-- **`/status`** - Service information
+- **`/health`** - Detailed health status with tools list
+- **`/mcp`** - MCP protocol endpoint (POST)
+  - Supports standard JSON-RPC requests
+  - Supports streaming with `stream: true` parameter
 
 ## 🔧 **MCP Client Configuration**
 
@@ -103,48 +113,53 @@ For external MCP clients (like retellai.com), use **local Docker deployment**:
 
 ## 🎯 **Deployment Options**
 
-### **Option 1: Railway (HTTP only)**
-- ✅ Health checks work
-- ✅ Status monitoring
-- ❌ No MCP stdio support
-- ❌ External clients can't connect
+### **Option 1: Google Cloud Run (Recommended)**
+- ✅ HTTPS streaming support
+- ✅ Server-Sent Events (SSE) for real-time responses
+- ✅ Auto-scaling
+- ✅ Always-on instances (configurable)
+- ✅ Production-ready
+- ✅ Managed HTTPS certificates
+- ✅ Full MCP protocol over HTTP
 
 ### **Option 2: Local Docker (MCP stdio)**
-- ✅ Full MCP functionality
+- ✅ Full MCP stdio functionality
 - ✅ External client support
-- ✅ All 11 tools available
+- ✅ All tools available
 - ❌ Requires local machine
-
-### **Option 3: VPS with Docker (Recommended)**
-- ✅ Full MCP functionality
-- ✅ External client support
-- ✅ Always available
-- ✅ Production ready
+- ❌ No HTTPS
 
 ## 🚀 **Production Deployment**
 
-For production MCP server deployment:
+For production deployment, use **Google Cloud Run**:
 
-1. **Deploy to VPS**:
+1. **Deploy to Cloud Run**:
    ```bash
-   # On your VPS
-   git clone https://github.com/tindevelopers/gorgias-mcp-server.git
-   cd gorgias-mcp-server
-   docker-compose up -d gorgias-mcp-server
+   # Use Cloud Build (recommended)
+   gcloud builds submit --config cloudbuild.yaml
+   
+   # Or see CLOUD_RUN_DEPLOYMENT.md for detailed instructions
    ```
 
-2. **Configure MCP clients** to connect to your VPS
+2. **Configure MCP clients** to use HTTPS endpoint:
+   - Endpoint: `https://your-service.run.app/mcp`
+   - Method: POST
+   - Content-Type: application/json
+   - Supports streaming with `stream: true` parameter
 
-3. **Use Railway** for monitoring and health checks only
+3. **Monitor via Cloud Run console**:
+   - Logs, metrics, and health checks
 
 ## 📊 **Summary**
 
-| Feature | Railway | Local Docker | VPS Docker |
-|---------|---------|--------------|------------|
-| MCP stdio | ❌ | ✅ | ✅ |
-| HTTP healthcheck | ✅ | ✅ | ✅ |
-| External clients | ❌ | ✅ | ✅ |
-| Always available | ✅ | ❌ | ✅ |
-| Production ready | ❌ | ❌ | ✅ |
+| Feature | Google Cloud Run | Local Docker |
+|---------|------------------|--------------|
+| HTTPS | ✅ | ❌ |
+| Streaming (SSE) | ✅ | ❌ |
+| MCP HTTP protocol | ✅ | ❌ |
+| MCP stdio | ❌ | ✅ |
+| Auto-scaling | ✅ | ❌ |
+| Always available | ✅ | ❌ |
+| Production ready | ✅ | ❌ |
 
-**Recommendation**: Use **VPS with Docker** for production MCP server, and **Railway** for monitoring.
+**Recommendation**: Use **Google Cloud Run** for production deployment with HTTPS streaming support.
