@@ -29,7 +29,7 @@ class CustomerTools:
         return [
             Tool(
                 name="list_customers",
-                description="List all customers with optional filtering",
+                description="List all customers with optional filtering by name, email, or date",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -37,6 +37,10 @@ class CustomerTools:
                             "type": "integer",
                             "description": "Maximum number of customers to return",
                             "default": 50
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "Filter by customer full name (e.g., 'Tony Katz')"
                         },
                         "email": {
                             "type": "string",
@@ -137,21 +141,24 @@ class CustomerTools:
             ),
             Tool(
                 name="search_customers",
-                description="Search customers by email, name, or other criteria",
+                description="Search customers by name or email. Uses the Gorgias customers API with name/email filters.",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {
+                        "name": {
                             "type": "string",
-                            "description": "Search query"
+                            "description": "Customer name to search for (e.g., 'Tony Katz')"
+                        },
+                        "email": {
+                            "type": "string",
+                            "description": "Customer email to search for"
                         },
                         "limit": {
                             "type": "integer",
                             "description": "Maximum number of results",
                             "default": 50
                         }
-                    },
-                    "required": ["query"]
+                    }
                 }
             ),
             Tool(
@@ -227,7 +234,7 @@ class CustomerTools:
         """List customers with optional filtering.
         
         Args:
-            **kwargs: Filter parameters.
+            **kwargs: Filter parameters (name, email, created_after, created_before, limit).
             
         Returns:
             JSON string of customers data.
@@ -237,6 +244,8 @@ class CustomerTools:
             params = {}
             if "limit" in kwargs:
                 params["limit"] = kwargs["limit"]
+            if "name" in kwargs:
+                params["name"] = kwargs["name"]
             if "email" in kwargs:
                 params["email"] = kwargs["email"]
             if "created_after" in kwargs:
@@ -426,18 +435,11 @@ class CustomerTools:
             except Exception as e:
                 logger.debug(f"Failed to search customer by email {email}: {e}")
 
-        # Fall back to generic search when only phone is provided
-        if phone:
-            try:
-                response = await self.api_client.get(
-                    "customers/search",
-                    params={"q": phone, "limit": 1}
-                )
-                data = response.get("data") if isinstance(response, dict) else None
-                if data:
-                    return data[0]
-            except Exception as e:
-                logger.debug(f"Failed to search customer by phone {phone}: {e}")
+        # Note: Gorgias API doesn't support phone-based search directly
+        # Phone lookup would require fetching customers and filtering locally
+        # For now, we only support email-based lookup
+        if phone and not email:
+            logger.debug(f"Phone-only lookup not supported by Gorgias API: {phone}")
 
         return None
 
@@ -579,26 +581,36 @@ class CustomerTools:
         except Exception as e:
             return f"Error updating customer {customer_id}: {str(e)}"
     
-    async def search_customers(self, query: str, limit: int = 50) -> str:
-        """Search customers by email, name, or other criteria.
+    async def search_customers(self, name: str = None, email: str = None, limit: int = 50) -> str:
+        """Search customers by name or email using Gorgias API filters.
         
         Args:
-            query: Search query.
+            name: Customer name to search for.
+            email: Customer email to search for.
             limit: Maximum number of results.
             
         Returns:
             JSON string of search results.
         """
         try:
-            params = {
-                "q": query,
-                "limit": limit
-            }
+            params = {"limit": limit}
+            search_terms = []
             
-            data = await self.api_client.get("customers/search", params=params)
+            if name:
+                params["name"] = name
+                search_terms.append(f"name='{name}'")
+            if email:
+                params["email"] = email
+                search_terms.append(f"email='{email}'")
+            
+            if not search_terms:
+                return "Error: Please provide either 'name' or 'email' to search for."
+            
+            data = await self.api_client.get("customers", params=params)
             count = len(data.get("data", [])) if isinstance(data, dict) else 0
+            search_desc = " and ".join(search_terms)
             return (
-                f"Found {count} customers matching '{query}':\n"
+                f"Found {count} customers matching {search_desc}:\n"
                 f"{self._format_json(data)}"
             )
             
