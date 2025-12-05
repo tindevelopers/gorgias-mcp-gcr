@@ -27,6 +27,8 @@ steps:
       - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:latest'
 
   # Deploy container image to Cloud Run
+  # Note: Credentials (GORGIAS_API_KEY, GORGIAS_USERNAME) are NOT set here
+  # They must be configured separately via: gcloud run services update --set-env-vars
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -52,8 +54,8 @@ steps:
       - '300'
       - '--port'
       - '8080'
-      - '--set-env-vars'
-      - 'GORGIAS_BASE_URL=https://petstoredirect.gorgias.com/api/,DEBUG=false,GORGIAS_API_KEY=placeholder,GORGIAS_USERNAME=placeholder@example.com'
+      - '--update-env-vars'
+      - 'GORGIAS_BASE_URL=https://petstoredirect.gorgias.com/api/,DEBUG=false'
 
 images:
   - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:${_IMAGE_TAG}'
