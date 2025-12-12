@@ -55,7 +55,7 @@ steps:
       - '--port'
       - '8080'
       - '--update-env-vars'
-      - 'GORGIAS_BASE_URL=https://petstoredirect.gorgias.com/api/,DEBUG=false'
+      - 'DEBUG=false'
 
 images:
   - 'gcr.io/$PROJECT_ID/gorgias-mcp-server:${_IMAGE_TAG}'

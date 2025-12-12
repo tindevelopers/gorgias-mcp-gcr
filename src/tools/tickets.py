@@ -98,6 +98,13 @@ class TicketTools:
                         "assignee_id": {
                             "type": "integer",
                             "description": "ID of the agent to assign the ticket to"
+                        },
+                        "tags": {
+                            "type": "array",
+                            "description": "List of tag names to apply to the ticket",
+                            "items": {
+                                "type": "string"
+                            }
                         }
                     },
                     "required": ["subject", "body", "customer_id"]
@@ -302,6 +309,11 @@ class TicketTools:
             if assignee_id is not None:
                 # Gorgias API expects assignee_user as an object with id field
                 ticket_data["assignee_user"] = {"id": assignee_id}
+
+            tags = kwargs.get("tags")
+            if tags:
+                # Gorgias API expects tags as array of objects with name field
+                ticket_data["tags"] = [{"name": tag} for tag in tags]
 
             data = await self.api_client.post("tickets", data=ticket_data)
             ticket_identifier = (
